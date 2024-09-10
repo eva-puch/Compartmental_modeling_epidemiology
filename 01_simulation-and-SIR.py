@@ -22,6 +22,7 @@ alpha = 2.55/7                          # rate of exit from the Infectious compa
 beta = 0.0004/7                         # effective contact rate
 I0 = 1
 xstart = [ps0 * n, I0, (1-ps0) * n]
+parms = [beta, alpha]
 
 # Simulation of epidemic.
 solution = odeint(lvmodel, xstart, times, args=(beta, alpha))
@@ -54,6 +55,7 @@ data['week'] = range(1, len(data) + 1)                          # new column
 
 #----  Comparison of the simulated and real epidemics, and search for the optimal
 #----  parameters (alpha and beta) to best match the simulation to reality.
+
 def opti_sim(x):
     sol = solve_ivp(lambda t, y: lvmodel(y, t, x[0], x[1]), [times[0], times[-1]], xstart, t_eval=times, method='RK45')
     out1 = pd.DataFrame(sol.y.T, columns=['s', 'i', 'r'])
@@ -83,13 +85,15 @@ parms_estim = res.x
 print("Estimated parameters:", parms_estim)     # beta=0.00015, alpha=1.137
 
 # SIR modeling with the estimated parameters
-out = pd.DataFrame(np.round(odeint(lvmodel, xstart, times, args=(parms_estim[0], parms_estim[1])), 0), columns=['s', 'i', 'r'])
+beta = 0.0001260318
+alpha = 1.5230279631
+out = pd.DataFrame(np.round(odeint(lvmodel, xstart, times, args=(beta, alpha)), 0), columns=['s', 'i', 'r'])
 out['time'] = np.arange(0, len(out['s']))
 #print(out)
 
 # Calculation of incidences (in days)
 out['newcases'] = [0] + list(-np.diff(out['s']))
-print(out)
+#print(out)
 
 # Graph of new cases per day (simulation)
 plt.figure(figsize=(10, 6))
@@ -100,7 +104,7 @@ plt.xlabel("Days")
 plt.ylabel("Number of new cases")
 plt.grid(True)
 plt.legend()
-#lt.show()
+#plt.show()
 
 # Graph of real data new cases per week (real data)
 plt.figure(figsize=(10, 6))
@@ -111,7 +115,7 @@ plt.xlabel("Weeks")
 plt.ylabel("Number of new cases")
 plt.grid(True)
 plt.legend()
-plt.show()
+#plt.show()
 
 # alignment of peaks of simulated and real epidemics
 time_max = data['week'][data['inc100'].idxmax()]        # time where the max incidence is reached in real data
@@ -122,3 +126,13 @@ out = out[(out['time'] >= time_max_s - 4) & (out['time'] <= time_max_s + 4)]
 out['week'] = np.arange(1, len(out) + 1)               # assign new week numbers
 
 # combine the two previous graphs of epidemic's peak (simulation and real data)
+plt.figure(figsize=(10, 6))
+plt.scatter(data['week'], data['inc100'], color='orange', label="New Real Cases", zorder=3)
+plt.plot(out['week'], out['newcases'], color='brown', label="Simulated Cases", zorder=2)
+plt.ylim(0, max(out['newcases'].max(), data['inc100'].max()) + 50)
+plt.title("Evolution of new cases per week at the peak \n (real data vs simulation)")
+plt.xlabel("Weeks")
+plt.ylabel("Number of new cases")
+plt.grid(True)
+plt.legend()
+plt.show()
